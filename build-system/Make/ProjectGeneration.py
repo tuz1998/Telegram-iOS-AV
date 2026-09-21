@@ -9,6 +9,39 @@ def remove_directory(path):
     if os.path.isdir(path):
         shutil.rmtree(path)
 
+
+def apply_xcode_27_framework_workaround(xcodeproj_path):
+    script_path = os.path.join(xcodeproj_path, 'rules_xcodeproj/bazel/copy_outputs.sh')
+    if not os.path.isfile(script_path):
+        return
+
+    with open(script_path, 'r') as file:
+        contents = file.read()
+
+    marker = '      if [[ -n "${TEST_HOST:-}" ]]; then\n'
+    if marker not in contents or 'Xcode 27 copies the placeholder Swift module' in contents:
+        return
+
+    workaround = '''      # Some macOS system rsync versions ignore `--chmod` for directories
+      # copied from Bazel's read-only output tree. Xcode subsequently updates
+      # the proxy framework's Info.plist, so guarantee owner write access.
+      if [[ -n "${WRAPPER_NAME:-}" ]]; then
+        chmod -R u+w "$TARGET_BUILD_DIR/$WRAPPER_NAME"
+      fi
+
+      # Xcode 27 copies the placeholder Swift module emitted for Bazel-mode
+      # proxy framework targets. Bazel framework outputs intentionally do not
+      # include that Xcode-only directory, so create its destination first.
+      if [[ "${WRAPPER_EXTENSION:-}" == "framework" && \\
+            -n "${PRODUCT_MODULE_NAME:-}" ]]; then
+        mkdir -p "$TARGET_BUILD_DIR/$WRAPPER_NAME/Modules/$PRODUCT_MODULE_NAME.swiftmodule"
+      fi
+
+'''
+    with open(script_path, 'w') as file:
+        file.write(contents.replace(marker, workaround + marker))
+
+
 def generate_xcodeproj(build_environment: BuildEnvironment, disable_extensions, disable_provisioning_profiles, include_release, generate_dsym, bazel_app_arguments, target_name):
     if '/' in target_name:
         app_target_spec = target_name.split('/')[0] + '/' + target_name.split('/')[1] + ':' + target_name.split('/')[1]
@@ -50,6 +83,7 @@ def generate_xcodeproj(build_environment: BuildEnvironment, disable_extensions, 
     call_executable(bazel_generate_arguments)
 
     xcodeproj_path = '{}.xcodeproj'.format(app_target_spec.replace(':', '/'))
+    apply_xcode_27_framework_workaround(xcodeproj_path)
     return xcodeproj_path
 
 

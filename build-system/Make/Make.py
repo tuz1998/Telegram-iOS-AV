@@ -83,6 +83,7 @@ class BazelCommandLine:
         self.common_debug_args = [
             '--@build_bazel_rules_swift//swift:copt="-j"',
             f'--@build_bazel_rules_swift//swift:copt="{num_threads}"',
+            '--@build_bazel_rules_swift//swift:copt="-no-warnings-as-errors"',
         ]
 
         self.common_release_args = [
