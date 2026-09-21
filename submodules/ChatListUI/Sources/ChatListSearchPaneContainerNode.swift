@@ -109,7 +109,6 @@ func defaultAvailableSearchPanes(isForum: Bool, hasDownloads: Bool, hasPublicPos
     if hasPublicPosts {
         result.append(.publicPosts)
     }
-    result.append(.channels)
     result.append(.apps)
     if !isForum {
         result.append(.globalPosts)

@@ -3031,6 +3031,10 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         return false
                     }
 
+                    if case let .channel(channel) = peer, case .broadcast = channel.info {
+                        return false
+                    }
+
                     if let requestPeerType {
                         guard !peer.isDeleted && peer.id != context.account.peerId else {
                             return false
